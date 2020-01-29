@@ -2,9 +2,20 @@
 
 const VERT_GLSL = `
   attribute vec4 a_position;
+  uniform float u_angle;
+
+  mat2 rotate2D(float a) {
+    return mat2(
+      cos(a), -sin(a),
+      sin(a), cos(a)
+    );
+  }
 
   void main() {
     gl_Position = a_position;
+    gl_Position.xy *= rotate2D(u_angle);
+    gl_Position.y *= -1.0;
+    gl_Position.xy /= 4.0;
   }
 `
 
@@ -15,6 +26,29 @@ const FRAG_GLSL = `
     gl_FragColor = vec4(1, 0, 0.5, 1);
   }
 `
+
+let positions = Float32Array.of(
+  0, 0,
+  3, 0,
+  0, 1,
+  0, 1,
+  3, 0,
+  3, 1,
+  0, 1,
+  1, 1,
+  0, 4,
+  0, 4,
+  1, 1,
+  1, 4,
+  1, 2,
+  2, 2,
+  1, 3,
+  1, 3,
+  2, 2,
+  2, 3
+);
+
+let degA = 0;
 
 function createShader(gl, type, source) {
   let shader = gl.createShader(type);
@@ -45,11 +79,14 @@ function createProgram(gl, vertexShader, fragmentShader) {
   return program;
 }
 
-let positions = Float32Array.of(
-  0, 0,
-  0, 0.5,
-  0.7, 0
-);
+function drawScene() {
+  gl.uniform1f(uAngleLocation, degA++ * Math.PI / 180)
+
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.TRIANGLES, 0, 18);
+
+  requestAnimationFrame(drawScene);
+}
 
 let canvas = document.getElementById("c");
 if (!canvas) throw new Error("Could not get canvas.");
@@ -66,12 +103,13 @@ let positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
 
-let positionLocation = gl.getAttribLocation(program, "a_position");
-gl.enableVertexAttribArray(positionLocation);
-gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+let aPositionLocation = gl.getAttribLocation(program, "a_position");
+gl.enableVertexAttribArray(aPositionLocation);
+gl.vertexAttribPointer(aPositionLocation, 2, gl.FLOAT, false, 0, 0);
+
+let uAngleLocation = gl.getUniformLocation(program, "u_angle");
 
 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 gl.clearColor(0, 0, 0, 0);
 
-gl.clear(gl.COLOR_BUFFER_BIT);
-gl.drawArrays(gl.TRIANGLES, 0, 3);
+requestAnimationFrame(drawScene);
