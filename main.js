@@ -8,7 +8,9 @@ if (!gl) throw new Error("Could not get WebGL context.");
 
 const VERT_GLSL = `
   attribute vec4 a_position;
+  attribute vec2 a_texcoord;
   uniform float u_angle;
+  varying vec2 v_texcoord;
 
   mat2 rotate2D(float a) {
     return mat2(
@@ -22,14 +24,19 @@ const VERT_GLSL = `
     gl_Position.xy *= rotate2D(u_angle);
     gl_Position.y *= -1.0;
     gl_Position.xy /= 4.0;
+
+    v_texcoord = a_texcoord;
   }
 `
 
 const FRAG_GLSL = `
   precision mediump float;
 
+  varying vec2 v_texcoord;
+  uniform sampler2D u_texture;
+
   void main() {
-    gl_FragColor = vec4(1, 0, 0.5, 1);
+    gl_FragColor = texture2D(u_texture, v_texcoord);
   }
 `
 
@@ -47,17 +54,46 @@ let positions = Float32Array.of(
   1, 3, 2, 2, 2, 3
 );
 
+let texCoords = Float32Array.of(
+  0, 0, 1, 0, 0, 1,
+  0, 1, 1, 0, 1, 1,
+  0, 0, 1, 0, 0, 1,
+  0, 1, 1, 0, 1, 1,
+  0, 0, 1, 0, 0, 1,
+  0, 1, 1, 0, 1, 1
+);
+
 let degA = 0;
 
 let positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
 
+let texCoordBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+
+let texture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, Uint8Array.of(0, 0, 255, 255));
+
+let image = new Image();
+image.src = "f-texture.png";
+image.addEventListener("load", () => {
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+  gl.generateMipmap(gl.TEXTURE_2D);
+});
+
 let aPositionLocation = gl.getAttribLocation(program, "a_position");
 gl.enableVertexAttribArray(aPositionLocation);
-gl.vertexAttribPointer(aPositionLocation, 2, gl.FLOAT, false, 0, 0);
+
+let aTexCoordLocation = gl.getAttribLocation(program, "a_texcoord");
+gl.enableVertexAttribArray(aTexCoordLocation);
 
 let uAngleLocation = gl.getUniformLocation(program, "u_angle");
+let uTextureLocation = gl.getUniformLocation(program, "u_texture");
+gl.uniform1i(uTextureLocation, 0);
 
 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 gl.clearColor(0, 0, 0, 0);
@@ -97,6 +133,13 @@ function drawScene() {
   gl.uniform1f(uAngleLocation, degA++ * Math.PI / 180)
 
   gl.clear(gl.COLOR_BUFFER_BIT);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.vertexAttribPointer(aPositionLocation, 2, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+  gl.vertexAttribPointer(aTexCoordLocation, 2, gl.FLOAT, false, 0, 0);
+
   gl.drawArrays(gl.TRIANGLES, 0, 18);
 
   requestAnimationFrame(drawScene);
