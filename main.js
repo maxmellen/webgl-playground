@@ -21,9 +21,8 @@ const VERT_GLSL = `
 
   void main() {
     gl_Position = a_position;
-    gl_Position.xy *= 2.0;
-    gl_Position.xy -= 1.0;
     gl_Position.xy *= rotate2D(u_angle);
+    gl_Position.xy /= 3.5;
     gl_Position.y *= -1.0;
 
     v_texcoord = a_texcoord;
@@ -47,13 +46,13 @@ let program = createProgram(gl, vertexShader, fragmentShader);
 gl.useProgram(program);
 
 let positions = Float32Array.of(
-  38, 44, 218, 44, 38, 85,
-  38, 85, 218, 44, 218, 85,
-  38, 85, 113, 85, 38, 223,
-  38, 223, 113, 85, 113, 223,
-  113, 112, 203, 112, 113, 151,
-  113, 151, 203, 112, 203, 151
-).map(x => x / 255);
+  0, 0, 2.5, 0, 0, 1,
+  0, 1, 2.5, 0, 2.5, 1,
+  0, 1, 1, 1, 0, 3.5,
+  0, 3.5, 1, 1, 1, 3.5,
+  1, 1.5, 2, 1.5, 1, 2.25,
+  1, 2.25, 2, 1.5, 2, 2.25
+);
 
 
 let texCoords = Float32Array.of(
