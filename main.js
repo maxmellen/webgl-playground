@@ -1,5 +1,11 @@
 "use strict";
 
+let canvas = document.getElementById("c");
+if (!canvas) throw new Error("Could not get canvas.");
+
+let gl = canvas.getContext("webgl");
+if (!gl) throw new Error("Could not get WebGL context.");
+
 const VERT_GLSL = `
   attribute vec4 a_position;
   uniform float u_angle;
@@ -27,28 +33,36 @@ const FRAG_GLSL = `
   }
 `
 
+let vertexShader = createShader(gl, gl.VERTEX_SHADER, VERT_GLSL);
+let fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, FRAG_GLSL);
+let program = createProgram(gl, vertexShader, fragmentShader);
+gl.useProgram(program);
+
 let positions = Float32Array.of(
-  0, 0,
-  3, 0,
-  0, 1,
-  0, 1,
-  3, 0,
-  3, 1,
-  0, 1,
-  1, 1,
-  0, 4,
-  0, 4,
-  1, 1,
-  1, 4,
-  1, 2,
-  2, 2,
-  1, 3,
-  1, 3,
-  2, 2,
-  2, 3
+  0, 0, 3, 0, 0, 1,
+  0, 1, 3, 0, 3, 1,
+  0, 1, 1, 1, 0, 4,
+  0, 4, 1, 1, 1, 4,
+  1, 2, 2, 2, 1, 3,
+  1, 3, 2, 2, 2, 3
 );
 
 let degA = 0;
+
+let positionBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+let aPositionLocation = gl.getAttribLocation(program, "a_position");
+gl.enableVertexAttribArray(aPositionLocation);
+gl.vertexAttribPointer(aPositionLocation, 2, gl.FLOAT, false, 0, 0);
+
+let uAngleLocation = gl.getUniformLocation(program, "u_angle");
+
+gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+gl.clearColor(0, 0, 0, 0);
+
+requestAnimationFrame(drawScene);
 
 function createShader(gl, type, source) {
   let shader = gl.createShader(type);
@@ -87,29 +101,3 @@ function drawScene() {
 
   requestAnimationFrame(drawScene);
 }
-
-let canvas = document.getElementById("c");
-if (!canvas) throw new Error("Could not get canvas.");
-
-let gl = canvas.getContext("webgl");
-if (!gl) throw new Error("Could not get WebGL context.");
-
-let vertexShader = createShader(gl, gl.VERTEX_SHADER, VERT_GLSL);
-let fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, FRAG_GLSL);
-let program = createProgram(gl, vertexShader, fragmentShader);
-gl.useProgram(program);
-
-let positionBuffer = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-
-let aPositionLocation = gl.getAttribLocation(program, "a_position");
-gl.enableVertexAttribArray(aPositionLocation);
-gl.vertexAttribPointer(aPositionLocation, 2, gl.FLOAT, false, 0, 0);
-
-let uAngleLocation = gl.getUniformLocation(program, "u_angle");
-
-gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-gl.clearColor(0, 0, 0, 0);
-
-requestAnimationFrame(drawScene);
