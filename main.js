@@ -7,36 +7,85 @@ let gl = canvas.getContext("webgl");
 if (!gl) throw new Error("Could not get WebGL context.");
 
 let vertGlsl = `
-attribute vec2 a_position;
+attribute vec3 a_position;
+attribute vec3 a_color;
+varying vec3 v_color;
 uniform float u_angle;
 
 mat2 rotate(float a) {
   return mat2(
-     cos(a), sin(a),
-    -sin(a), cos(a)
+    cos(a), -sin(a),
+    sin(a),  cos(a)
   );
 }
 
 void main() {
-  gl_Position = vec4(a_position * rotate(u_angle), 0.0, 1.0);
+  vec3 rotated_position = a_position;
+  rotated_position -= 0.5;
+  rotated_position.xz *= rotate(u_angle * -3.0);
+  rotated_position.yz *= rotate(u_angle / 2.0);
+  gl_Position = vec4(rotated_position, 1.0);
+  gl_Position.w *= 2.0;
+  gl_Position.y *= -1.0;
+  v_color = a_color;
 }
 `;
 
 let fragGlsl = `
 precision mediump float;
+varying vec3 v_color;
 
 void main() {
-  gl_FragColor = vec4(1.0, 0.0, 0.5, 1.0);
+  gl_FragColor = vec4(v_color, 1.0);
 }
 `;
 
 let positions = Float32Array.of(
-  0, 0,
-  0, 0.5,
-  1, 0
+  // Front face
+  0, 0, 0, 1, 0, 0, 0, 1, 0,
+  0, 1, 0, 1, 0, 0, 1, 1, 0,
+  // Top face
+  0, 0, 0, 1, 0, 0, 0, 0, 1,
+  0, 0, 1, 1, 0, 0, 1, 0, 1,
+  // Left face
+  0, 0, 0, 0, 1, 0, 0, 0, 1,
+  0, 0, 1, 0, 1, 0, 0, 1, 1,
+  // Right face
+  1, 0, 0, 1, 0, 1, 1, 1, 0,
+  1, 1, 0, 1, 0, 1, 1, 1, 1,
+  // Back face
+  0, 0, 1, 1, 0, 1, 0, 1, 1,
+  0, 1, 1, 1, 0, 1, 1, 1, 1,
+  // Bottom face
+  0, 1, 0, 1, 1, 0, 0, 1, 1,
+  0, 1, 1, 1, 1, 0, 1, 1, 1
+);
+
+let colors = Float32Array.of(
+  // Front face
+  1, 0, 0, 1, 0, 0, 1, 0, 0,
+  1, 0, 0, 1, 0, 0, 1, 0, 0,
+  // Top face
+  0, 1, 0, 0, 1, 0, 0, 1, 0,
+  0, 1, 0, 0, 1, 0, 0, 1, 0,
+  // Left face
+  0, 0, 1, 0, 0, 1, 0, 0, 1,
+  0, 0, 1, 0, 0, 1, 0, 0, 1,
+  // Right face
+  1, 1, 0, 1, 1, 0, 1, 1, 0,
+  1, 1, 0, 1, 1, 0, 1, 1, 0,
+  // Back face
+  0, 1, 1, 0, 1, 1, 0, 1, 1,
+  0, 1, 1, 0, 1, 1, 0, 1, 1,
+  // Bottom face
+  1, 0, 1, 1, 0, 1, 1, 0, 1,
+  1, 0, 1, 1, 0, 1, 1, 0, 1
 );
 
 let degAngle = 0;
+
+gl.enable(gl.DEPTH_TEST);
+gl.clearColor(0, 0, 0, 0);
 
 let vertShader = compileShader(gl, gl.VERTEX_SHADER, vertGlsl);
 let fragShader = compileShader(gl, gl.FRAGMENT_SHADER, fragGlsl);
@@ -55,16 +104,21 @@ if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
 gl.useProgram(program);
 
 let vertexBuffer = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-
+let colorBuffer = gl.createBuffer();
 let positionAttribLocation = gl.getAttribLocation(program, "a_position");
-gl.vertexAttribPointer(positionAttribLocation, 2, gl.FLOAT, false, 0, 0);
-gl.enableVertexAttribArray(positionAttribLocation);
-
+let colorAttribLocation = gl.getAttribLocation(program, "a_color");
 let angleUniformLocation = gl.getUniformLocation(program, "u_angle");
 
-gl.clearColor(0, 0, 0, 0);
+gl.enableVertexAttribArray(positionAttribLocation);
+gl.enableVertexAttribArray(colorAttribLocation);
+
+gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+gl.vertexAttribPointer(positionAttribLocation, 3, gl.FLOAT, false, 0, 0);
+
+gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+gl.vertexAttribPointer(colorAttribLocation, 3, gl.FLOAT, false, 0, 0);
 
 requestAnimationFrame(drawScene);
 
@@ -85,8 +139,8 @@ function compileShader(gl, type, source) {
 function drawScene() {
   gl.uniform1f(angleUniformLocation, degAngle++ / 180 * Math.PI);
 
-  gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.drawArrays(gl.TRIANGLES, 0, 36);
 
   requestAnimationFrame(drawScene);
 }
