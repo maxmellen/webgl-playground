@@ -15,18 +15,17 @@ uniform float u_angle;
 mat2 rotate(float a) {
   return mat2(
     cos(a), -sin(a),
-    sin(a),  cos(a)
+    sin(a), cos(a)
   );
 }
 
 void main() {
-  vec3 rotated_position = a_position;
-  rotated_position -= 0.5;
-  rotated_position.xz *= rotate(u_angle * -3.0);
-  rotated_position.yz *= rotate(u_angle / 2.0);
-  gl_Position = vec4(rotated_position, 1.0);
-  gl_Position.w *= 2.0;
-  gl_Position.y *= -1.0;
+  vec3 p = a_position;
+  p -= 0.5;
+  p.y *= -1.0;
+  p.zx *= rotate(u_angle);
+  p.zy *= rotate(u_angle / 3.0);
+  gl_Position = vec4(p, 1.0);
   v_color = a_color;
 }
 `;
