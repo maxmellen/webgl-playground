@@ -9,8 +9,8 @@ if (!gl) throw new Error("Could not get WebGL context.");
 let vertGlsl = `
 attribute vec3 a_position;
 attribute vec3 a_color;
-varying vec3 v_color;
 uniform float u_angle;
+varying vec3 v_color;
 
 mat2 rotate(float a) {
   return mat2(
@@ -25,7 +25,7 @@ void main() {
   p.y *= -1.0;
   p.zx *= rotate(u_angle);
   p.zy *= rotate(u_angle / 3.0);
-  gl_Position = vec4(p, 1.0);
+  gl_Position = vec4(p.xy / (1.0 + p.z / 2.0), p.z, 1.0);
   v_color = a_color;
 }
 `;
