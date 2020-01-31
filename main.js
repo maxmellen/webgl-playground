@@ -42,23 +42,23 @@ void main() {
 
 let positions = Float32Array.of(
   // Front face
-  0, 0, 0, 1, 0, 0, 0, 1, 0,
-  0, 1, 0, 1, 0, 0, 1, 1, 0,
+  0, 0, 0, 0, 1, 0, 1, 0, 0,
+  1, 0, 0, 0, 1, 0, 1, 1, 0,
   // Top face
   0, 0, 0, 1, 0, 0, 0, 0, 1,
   0, 0, 1, 1, 0, 0, 1, 0, 1,
   // Left face
-  0, 0, 0, 0, 1, 0, 0, 0, 1,
-  0, 0, 1, 0, 1, 0, 0, 1, 1,
+  0, 0, 0, 0, 0, 1, 0, 1, 0,
+  0, 1, 0, 0, 0, 1, 0, 1, 1,
   // Right face
-  1, 0, 0, 1, 0, 1, 1, 1, 0,
-  1, 1, 0, 1, 0, 1, 1, 1, 1,
+  1, 0, 0, 1, 1, 0, 1, 0, 1,
+  1, 0, 1, 1, 1, 0, 1, 1, 1,
   // Back face
   0, 0, 1, 1, 0, 1, 0, 1, 1,
   0, 1, 1, 1, 0, 1, 1, 1, 1,
   // Bottom face
-  0, 1, 0, 1, 1, 0, 0, 1, 1,
-  0, 1, 1, 1, 1, 0, 1, 1, 1
+  0, 1, 0, 0, 1, 1, 1, 1, 0,
+  1, 1, 0, 0, 1, 1, 1, 1, 1
 );
 
 let colors = Float32Array.of(
@@ -84,7 +84,7 @@ let colors = Float32Array.of(
 
 let degAngle = 0;
 
-gl.enable(gl.DEPTH_TEST);
+gl.enable(gl.CULL_FACE);
 gl.clearColor(0, 0, 0, 0);
 
 let vertShader = compileShader(gl, gl.VERTEX_SHADER, vertGlsl);
@@ -139,7 +139,7 @@ function compileShader(gl, type, source) {
 function drawScene() {
   gl.uniform1f(angleUniformLocation, degAngle++ / 180 * Math.PI);
 
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.clear(gl.COLOR_BUFFER_BIT);
   gl.drawArrays(gl.TRIANGLES, 0, 36);
 
   requestAnimationFrame(drawScene);
