@@ -9,15 +9,16 @@ if (!gl) throw new Error("Could not get WebGL context.");
 let vertGlsl = `
 attribute vec3 a_position;
 attribute vec3 a_color;
-uniform mat3 u_rotation;
+uniform mat4 u_matrix;
 varying vec3 v_color;
 
 void main() {
-  vec3 p = a_position;
-  p -= 0.5;
+  vec4 p = vec4(a_position, 1.0);
+  p.xyz -= 0.5;
   p.y *= -1.0;
-  p.xyz = u_rotation * p.xyz;
-  gl_Position = vec4(p.xy, p.z + 0.5, (1.0 + p.z / 2.0));
+  p = u_matrix * p;
+  p.z += 0.5;
+  gl_Position = p;
   v_color = a_color;
 }
 `;
@@ -98,7 +99,7 @@ let vertexBuffer = gl.createBuffer();
 let colorBuffer = gl.createBuffer();
 let positionAttribLocation = gl.getAttribLocation(program, "a_position");
 let colorAttribLocation = gl.getAttribLocation(program, "a_color");
-let rotationUniformLocation = gl.getUniformLocation(program, "u_rotation");
+let matrixUniformLocation = gl.getUniformLocation(program, "u_matrix");
 
 gl.enableVertexAttribArray(positionAttribLocation);
 gl.enableVertexAttribArray(colorAttribLocation);
@@ -134,19 +135,28 @@ function drawScene() {
   const s2 = Math.sin(r / 3);
   const c2 = Math.cos(r / 3);
 
-  const m1 = [
-    c1, 0, s1,
-    0, 1, 0,
-    -s1, 0, c1
+  const xzRotMat = [
+    c1, 0, s1, 0,
+    0, 1, 0, 0,
+    -s1, 0, c1, 0,
+    0, 0, 0, 1
   ];
 
-  const m2 = [
-    1, 0, 0,
-    0, c2, -s2,
-    0, s2, c2
+  const yzRotMat = [
+    1, 0, 0, 0,
+    0, c2, -s2, 0,
+    0, s2, c2, 0,
+    0, 0, 0, 1
   ];
 
-  gl.uniformMatrix3fv(rotationUniformLocation, false, mat3Dot(m2, m1));
+  const fudgeMat = [
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0.5,
+    0, 0, 0, 1
+  ];
+
+  gl.uniformMatrix4fv(matrixUniformLocation, false, [xzRotMat, yzRotMat, fudgeMat].reduceRight(mat4Dot));
 
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.drawArrays(gl.TRIANGLES, 0, 36);
@@ -154,21 +164,30 @@ function drawScene() {
   requestAnimationFrame(drawScene);
 }
 
-function mat3Dot(m1, m2) {
+function mat4Dot(m1, m2) {
   return [
     // First column
-    m1[0] * m2[0] + m1[3] * m2[1] + m1[6] * m2[2],
-    m1[1] * m2[0] + m1[4] * m2[1] + m1[7] * m2[2],
-    m1[2] * m2[0] + m1[5] * m2[1] + m1[8] * m2[2],
+    m1[0x0] * m2[0x0] + m1[0x4] * m2[0x1] + m1[0x8] * m2[0x2] + m1[0xC] * m2[0x3],
+    m1[0x1] * m2[0x0] + m1[0x5] * m2[0x1] + m1[0x9] * m2[0x2] + m1[0xD] * m2[0x3],
+    m1[0x2] * m2[0x0] + m1[0x6] * m2[0x1] + m1[0xA] * m2[0x2] + m1[0xE] * m2[0x3],
+    m1[0x3] * m2[0x0] + m1[0x7] * m2[0x1] + m1[0xB] * m2[0x2] + m1[0xF] * m2[0x3],
 
     // Second column
-    m1[0] * m2[3] + m1[3] * m2[4] + m1[6] * m2[5],
-    m1[1] * m2[3] + m1[4] * m2[4] + m1[7] * m2[5],
-    m1[2] * m2[3] + m1[5] * m2[4] + m1[8] * m2[5],
+    m1[0x0] * m2[0x4] + m1[0x4] * m2[0x5] + m1[0x8] * m2[0x6] + m1[0xC] * m2[0x7],
+    m1[0x1] * m2[0x4] + m1[0x5] * m2[0x5] + m1[0x9] * m2[0x6] + m1[0xD] * m2[0x7],
+    m1[0x2] * m2[0x4] + m1[0x6] * m2[0x5] + m1[0xA] * m2[0x6] + m1[0xE] * m2[0x7],
+    m1[0x3] * m2[0x4] + m1[0x7] * m2[0x5] + m1[0xB] * m2[0x6] + m1[0xF] * m2[0x7],
 
     // Third column
-    m1[0] * m2[6] + m1[3] * m2[7] + m1[6] * m2[8],
-    m1[1] * m2[6] + m1[4] * m2[7] + m1[7] * m2[8],
-    m1[2] * m2[6] + m1[5] * m2[7] + m1[8] * m2[8]
+    m1[0x0] * m2[0x8] + m1[0x4] * m2[0x9] + m1[0x8] * m2[0xA] + m1[0xC] * m2[0xB],
+    m1[0x1] * m2[0x8] + m1[0x5] * m2[0x9] + m1[0x9] * m2[0xA] + m1[0xD] * m2[0xB],
+    m1[0x2] * m2[0x8] + m1[0x6] * m2[0x9] + m1[0xA] * m2[0xA] + m1[0xE] * m2[0xB],
+    m1[0x3] * m2[0x8] + m1[0x7] * m2[0x9] + m1[0xB] * m2[0xA] + m1[0xF] * m2[0xB],
+
+    // Fourth column
+    m1[0x0] * m2[0xC] + m1[0x4] * m2[0xD] + m1[0x8] * m2[0xE] + m1[0xC] * m2[0xF],
+    m1[0x1] * m2[0xC] + m1[0x5] * m2[0xD] + m1[0x9] * m2[0xE] + m1[0xD] * m2[0xF],
+    m1[0x2] * m2[0xC] + m1[0x6] * m2[0xD] + m1[0xA] * m2[0xE] + m1[0xE] * m2[0xF],
+    m1[0x3] * m2[0xC] + m1[0x7] * m2[0xD] + m1[0xB] * m2[0xE] + m1[0xF] * m2[0xF]
   ];
 }
