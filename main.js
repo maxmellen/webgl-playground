@@ -9,22 +9,14 @@ if (!gl) throw new Error("Could not get WebGL context.");
 let vertGlsl = `
 attribute vec3 a_position;
 attribute vec3 a_color;
-uniform float u_angle;
+uniform mat3 u_rotation;
 varying vec3 v_color;
-
-mat2 rotate(float a) {
-  return mat2(
-    cos(a), -sin(a),
-    sin(a), cos(a)
-  );
-}
 
 void main() {
   vec3 p = a_position;
   p -= 0.5;
   p.y *= -1.0;
-  p.zx *= rotate(u_angle);
-  p.zy *= rotate(u_angle / 3.0);
+  p.xyz = u_rotation * p.xyz;
   gl_Position = vec4(p.xy / (1.0 + p.z / 2.0), p.z, 1.0);
   v_color = a_color;
 }
@@ -106,7 +98,7 @@ let vertexBuffer = gl.createBuffer();
 let colorBuffer = gl.createBuffer();
 let positionAttribLocation = gl.getAttribLocation(program, "a_position");
 let colorAttribLocation = gl.getAttribLocation(program, "a_color");
-let angleUniformLocation = gl.getUniformLocation(program, "u_angle");
+let rotationUniformLocation = gl.getUniformLocation(program, "u_rotation");
 
 gl.enableVertexAttribArray(positionAttribLocation);
 gl.enableVertexAttribArray(colorAttribLocation);
@@ -136,10 +128,47 @@ function compileShader(gl, type, source) {
 }
 
 function drawScene() {
-  gl.uniform1f(angleUniformLocation, degAngle++ / 180 * Math.PI);
+  const r = degAngle++ / 180 * Math.PI;
+  const s1 = Math.sin(r);
+  const c1 = Math.cos(r);
+  const s2 = Math.sin(r / 3);
+  const c2 = Math.cos(r / 3);
+
+  const m1 = [
+    c1, 0, s1,
+    0, 1, 0,
+    -s1, 0, c1
+  ];
+
+  const m2 = [
+    1, 0, 0,
+    0, c2, -s2,
+    0, s2, c2
+  ];
+
+  gl.uniformMatrix3fv(rotationUniformLocation, false, mat3Dot(m2, m1));
 
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.drawArrays(gl.TRIANGLES, 0, 36);
 
   requestAnimationFrame(drawScene);
+}
+
+function mat3Dot(m1, m2) {
+  return [
+    // First column
+    m1[0] * m2[0] + m1[3] * m2[1] + m1[6] * m2[2],
+    m1[1] * m2[0] + m1[4] * m2[1] + m1[7] * m2[2],
+    m1[2] * m2[0] + m1[5] * m2[1] + m1[8] * m2[2],
+
+    // Second column
+    m1[0] * m2[3] + m1[3] * m2[4] + m1[6] * m2[5],
+    m1[1] * m2[3] + m1[4] * m2[4] + m1[7] * m2[5],
+    m1[2] * m2[3] + m1[5] * m2[4] + m1[8] * m2[5],
+
+    // Third column
+    m1[0] * m2[6] + m1[3] * m2[7] + m1[6] * m2[8],
+    m1[1] * m2[6] + m1[4] * m2[7] + m1[7] * m2[8],
+    m1[2] * m2[6] + m1[5] * m2[7] + m1[8] * m2[8]
+  ];
 }
