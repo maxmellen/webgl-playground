@@ -17,7 +17,7 @@ void main() {
   p -= 0.5;
   p.y *= -1.0;
   p.xyz = u_rotation * p.xyz;
-  gl_Position = vec4(p.xy / (1.0 + p.z / 2.0), p.z, 1.0);
+  gl_Position = vec4(p.xy, p.z + 0.5, (1.0 + p.z / 2.0));
   v_color = a_color;
 }
 `;
