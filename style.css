@@ -11,8 +11,6 @@ body {
 }
 
 #c {
-  width: 256px;
-  height: 256px;
   background: #fff;
   box-shadow: 0 0 32px #0002;
 }
