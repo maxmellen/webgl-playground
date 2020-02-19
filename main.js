@@ -68,6 +68,12 @@ let positionAttribLocation = gl.getAttribLocation(program, "a_position");
 let colorAttribLocation = gl.getAttribLocation(program, "a_color");
 let rotationUniformLocation = gl.getUniformLocation(program, "u_rotation");
 
+gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+
 gl.enableVertexAttribArray(positionAttribLocation);
 gl.enableVertexAttribArray(colorAttribLocation);
 
@@ -118,6 +124,12 @@ let screenPositionAttribLocation = gl.getAttribLocation(screenProgram, "a_positi
 let screenTexCoordAttribLocation = gl.getAttribLocation(screenProgram, "a_texcoord");
 let screenRotationUniformLocation = gl.getUniformLocation(screenProgram, "u_transform");
 let screenTextureUniformLocation = gl.getUniformLocation(screenProgram, "u_texture");
+
+gl.bindBuffer(gl.ARRAY_BUFFER, screenVertexBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, screenPositions, gl.STATIC_DRAW);
+
+gl.bindBuffer(gl.ARRAY_BUFFER, screenTexCoordBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, screenTexCoords, gl.STATIC_DRAW);
 
 gl.enableVertexAttribArray(screenPositionAttribLocation);
 gl.enableVertexAttribArray(screenTexCoordAttribLocation);
@@ -188,11 +200,9 @@ function drawScene() {
   gl.useProgram(program);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
   gl.vertexAttribPointer(positionAttribLocation, 2, gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
   gl.vertexAttribPointer(colorAttribLocation, 3, gl.FLOAT, false, 0, 0);
 
   gl.uniformMatrix2fv(rotationUniformLocation, false, triangleRotMat);
@@ -205,11 +215,9 @@ function drawScene() {
   gl.useProgram(screenProgram);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, screenVertexBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, screenPositions, gl.STATIC_DRAW);
   gl.vertexAttribPointer(screenPositionAttribLocation, 2, gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, screenTexCoordBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, screenTexCoords, gl.STATIC_DRAW);
   gl.vertexAttribPointer(screenTexCoordAttribLocation, 2, gl.FLOAT, false, 0, 0);
 
   gl.uniformMatrix4fv(screenRotationUniformLocation, false, [screenRotMat, screenFudgeMat].reduceRight(mat4Dot));
