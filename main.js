@@ -31,10 +31,11 @@ gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex
 let vertGlsl = `
 attribute vec2 a_position;
 attribute vec3 a_color;
+uniform mat2 u_rotation;
 varying vec3 v_color;
 
 void main() {
-  gl_Position = vec4(a_position, 0.0, 1.0);
+  gl_Position = vec4(u_rotation * a_position, 0.0, 1.0);
   v_color = a_color;
 }
 `;
@@ -65,6 +66,7 @@ let vertexBuffer = gl.createBuffer();
 let colorBuffer = gl.createBuffer();
 let positionAttribLocation = gl.getAttribLocation(program, "a_position");
 let colorAttribLocation = gl.getAttribLocation(program, "a_color");
+let rotationUniformLocation = gl.getUniformLocation(program, "u_rotation");
 
 gl.enableVertexAttribArray(positionAttribLocation);
 gl.enableVertexAttribArray(colorAttribLocation);
@@ -162,14 +164,19 @@ function drawScene() {
   let s = Math.sin(a);
   let c = Math.cos(a);
 
-  let rotMat = [
+  let triangleRotMat = [
+    c, s,
+    -s, c
+  ];
+
+  let screenRotMat = [
     c, 0, s, 0,
     0, 1, 0, 0,
     -s, 0, c, 0,
     0, 0, 0, 1
   ];
 
-  let fudgeMat = [
+  let screenFudgeMat = [
     1, 0, 0, 0,
     0, 1, 0, 0,
     0, 0, 1, 0.5,
@@ -188,6 +195,8 @@ function drawScene() {
   gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
   gl.vertexAttribPointer(colorAttribLocation, 3, gl.FLOAT, false, 0, 0);
 
+  gl.uniformMatrix2fv(rotationUniformLocation, false, triangleRotMat);
+
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 
@@ -203,7 +212,7 @@ function drawScene() {
   gl.bufferData(gl.ARRAY_BUFFER, screenTexCoords, gl.STATIC_DRAW);
   gl.vertexAttribPointer(screenTexCoordAttribLocation, 2, gl.FLOAT, false, 0, 0);
 
-  gl.uniformMatrix4fv(screenRotationUniformLocation, false, [rotMat, fudgeMat].reduceRight(mat4Dot));
+  gl.uniformMatrix4fv(screenRotationUniformLocation, false, [screenRotMat, screenFudgeMat].reduceRight(mat4Dot));
   gl.uniform1i(screenTextureUniformLocation, 0);
 
   gl.clear(gl.COLOR_BUFFER_BIT);
