@@ -6,6 +6,9 @@ if (!canvas) throw new Error("Could not get canvas.");
 let gl = canvas.getContext("webgl");
 if (!gl) throw new Error("Could not get WebGL context.");
 
+const screenWidth = 32;
+const screenHeight = 32;
+
 canvas.width = 256;
 canvas.height = 256;
 canvas.style.width = `${canvas.width}px`;
@@ -16,9 +19,11 @@ if (window.devicePixelRatio) {
   canvas.height *= window.devicePixelRatio;
 }
 
+gl.clearColor(0, 0, 0, 0);
+
 let texture = gl.createTexture();
 gl.bindTexture(gl.TEXTURE_2D, texture);
-gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 32, 32, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, screenWidth, screenHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -29,14 +34,13 @@ gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
 gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
 
 let vertGlsl = `
-attribute vec2 a_position;
-attribute vec3 a_color;
-uniform mat2 u_rotation;
+attribute vec3 a_position;
+uniform mat4 u_transform;
 varying vec3 v_color;
 
 void main() {
-  gl_Position = vec4(u_rotation * a_position, 0.0, 1.0);
-  v_color = a_color;
+  gl_Position = u_transform * vec4(a_position, 2.0);
+  v_color = (a_position + 1.0) / 2.0;
 }
 `;
 
@@ -50,32 +54,35 @@ void main() {
 `;
 
 let positions = Float32Array.of(
-  -0.5, -0.5,
-  0.5, -0.5,
-  -0.5, 0.5
-);
-
-let colors = Float32Array.of(
-  0, 1, 1,
-  1, 0, 1,
-  1, 1, 0
+  // Top
+  -1, 1, 1, -1, 1, -1, 1, 1, 1,
+  1, 1, 1, -1, 1, -1, 1, 1, -1,
+  // Front
+  -1, 1, -1, -1, -1, -1, 1, 1, -1,
+  1, 1, -1, -1, -1, -1, 1, -1, -1,
+  // Left
+  -1, 1, 1, -1, -1, 1, -1, 1, -1,
+  -1, 1, -1, -1, -1, 1, -1, -1, -1,
+  // Right
+  1, 1, -1, 1, -1, -1, 1, 1, 1,
+  1, 1, 1, 1, -1, -1, 1, -1, 1,
+  // Back
+  1, 1, 1, 1, -1, 1, -1, 1, 1,
+  -1, 1, 1, 1, -1, 1, -1, -1, 1,
+  // Bottom
+  -1, -1, -1, -1, -1, 1, 1, -1, -1,
+  1, -1, -1, -1, -1, 1, 1, -1, 1
 );
 
 let program = compileProgram(gl, vertGlsl, fragGlsl);
 let vertexBuffer = gl.createBuffer();
-let colorBuffer = gl.createBuffer();
-let positionAttribLocation = gl.getAttribLocation(program, "a_position");
-let colorAttribLocation = gl.getAttribLocation(program, "a_color");
-let rotationUniformLocation = gl.getUniformLocation(program, "u_rotation");
+let cubePositionAttribLocation = gl.getAttribLocation(program, "a_position");
+let cubeTransformUniformLocation = gl.getUniformLocation(program, "u_transform");
 
 gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
 gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
 
-gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
-
-gl.enableVertexAttribArray(positionAttribLocation);
-gl.enableVertexAttribArray(colorAttribLocation);
+gl.enableVertexAttribArray(cubePositionAttribLocation);
 
 let screenPositions = Float32Array.of(
   -1, 1,
@@ -122,7 +129,7 @@ let screenVertexBuffer = gl.createBuffer();
 let screenTexCoordBuffer = gl.createBuffer();
 let screenPositionAttribLocation = gl.getAttribLocation(screenProgram, "a_position");
 let screenTexCoordAttribLocation = gl.getAttribLocation(screenProgram, "a_texcoord");
-let screenRotationUniformLocation = gl.getUniformLocation(screenProgram, "u_transform");
+let screenTransformUniformLocation = gl.getUniformLocation(screenProgram, "u_transform");
 let screenTextureUniformLocation = gl.getUniformLocation(screenProgram, "u_texture");
 
 gl.bindBuffer(gl.ARRAY_BUFFER, screenVertexBuffer);
@@ -134,7 +141,6 @@ gl.bufferData(gl.ARRAY_BUFFER, screenTexCoords, gl.STATIC_DRAW);
 gl.enableVertexAttribArray(screenPositionAttribLocation);
 gl.enableVertexAttribArray(screenTexCoordAttribLocation);
 
-gl.clearColor(0, 0, 0, 0);
 requestAnimationFrame(drawScene);
 
 function compileProgram(gl, vertGlsl, fragGlsl) {
@@ -175,40 +181,47 @@ function drawScene() {
   let a = degA++ * Math.PI / 180;
   let s = Math.sin(a);
   let c = Math.cos(a);
+  let s_3 = Math.sin(a / 3);
+  let c_3 = Math.cos(a / 3);
+  let s_6 = Math.sin(a / 6);
+  let c_6 = Math.cos(a / 6);
 
-  let triangleRotMat = [
-    c, s,
-    -s, c
-  ];
-
-  let screenRotMat = [
+  let cubeXZRotMat = [
     c, 0, s, 0,
     0, 1, 0, 0,
     -s, 0, c, 0,
     0, 0, 0, 1
   ];
 
-  let screenFudgeMat = [
+  let cubeYZRotMat = [
     1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0.5,
+    0, c_3, -s_3, 0,
+    0, s_3, c_3, 0,
     0, 0, 0, 1
   ];
 
+  let screenRotMat = [
+    c_6, -s_6, 0, 0,
+    s_6, c_6, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1
+  ];
+
+  gl.enable(gl.CULL_FACE);
+
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-  gl.viewport(0, 0, 32, 32);
+  gl.viewport(0, 0, screenWidth, screenHeight);
   gl.useProgram(program);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-  gl.vertexAttribPointer(positionAttribLocation, 2, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(cubePositionAttribLocation, 3, gl.FLOAT, false, 0, 0);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-  gl.vertexAttribPointer(colorAttribLocation, 3, gl.FLOAT, false, 0, 0);
-
-  gl.uniformMatrix2fv(rotationUniformLocation, false, triangleRotMat);
+  gl.uniformMatrix4fv(cubeTransformUniformLocation, false, [cubeXZRotMat, cubeYZRotMat].reduceRight(mat4Dot));
 
   gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.drawArrays(gl.TRIANGLES, 0, 36);
+
+  gl.disable(gl.CULL_FACE);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -220,7 +233,7 @@ function drawScene() {
   gl.bindBuffer(gl.ARRAY_BUFFER, screenTexCoordBuffer);
   gl.vertexAttribPointer(screenTexCoordAttribLocation, 2, gl.FLOAT, false, 0, 0);
 
-  gl.uniformMatrix4fv(screenRotationUniformLocation, false, [screenRotMat, screenFudgeMat].reduceRight(mat4Dot));
+  gl.uniformMatrix4fv(screenTransformUniformLocation, false, screenRotMat);
   gl.uniform1i(screenTextureUniformLocation, 0);
 
   gl.clear(gl.COLOR_BUFFER_BIT);
