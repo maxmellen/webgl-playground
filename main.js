@@ -28,8 +28,6 @@ let fb = gl.createFramebuffer();
 gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
 gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
 
-gl.viewport(0, 0, 32, 32);
-
 let vertGlsl = `
 attribute vec2 a_position;
 attribute vec3 a_color;
@@ -62,12 +60,7 @@ let colors = Float32Array.of(
   1, 1, 0
 );
 
-gl.clearColor(0, 0, 0, 0);
-
 let program = compileProgram(gl, vertGlsl, fragGlsl);
-
-gl.useProgram(program);
-
 let vertexBuffer = gl.createBuffer();
 let colorBuffer = gl.createBuffer();
 let positionAttribLocation = gl.getAttribLocation(program, "a_position");
@@ -75,20 +68,6 @@ let colorAttribLocation = gl.getAttribLocation(program, "a_color");
 
 gl.enableVertexAttribArray(positionAttribLocation);
 gl.enableVertexAttribArray(colorAttribLocation);
-
-gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-gl.vertexAttribPointer(positionAttribLocation, 2, gl.FLOAT, false, 0, 0);
-
-gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
-gl.vertexAttribPointer(colorAttribLocation, 3, gl.FLOAT, false, 0, 0);
-
-gl.clear(gl.COLOR_BUFFER_BIT);
-gl.drawArrays(gl.TRIANGLES, 0, 3);
-
-gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
 let screenPositions = Float32Array.of(
   -1, 1,
@@ -131,9 +110,6 @@ void main() {
 `;
 
 let screenProgram = compileProgram(gl, screenVertGlsl, screenFragGlsl);
-
-gl.useProgram(screenProgram);
-
 let screenVertexBuffer = gl.createBuffer();
 let screenTexCoordBuffer = gl.createBuffer();
 let screenPositionAttribLocation = gl.getAttribLocation(screenProgram, "a_position");
@@ -144,16 +120,7 @@ let screenTextureUniformLocation = gl.getUniformLocation(screenProgram, "u_textu
 gl.enableVertexAttribArray(screenPositionAttribLocation);
 gl.enableVertexAttribArray(screenTexCoordAttribLocation);
 
-gl.bindBuffer(gl.ARRAY_BUFFER, screenVertexBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, screenPositions, gl.STATIC_DRAW);
-gl.vertexAttribPointer(screenPositionAttribLocation, 2, gl.FLOAT, false, 0, 0);
-
-gl.bindBuffer(gl.ARRAY_BUFFER, screenTexCoordBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, screenTexCoords, gl.STATIC_DRAW);
-gl.vertexAttribPointer(screenTexCoordAttribLocation, 2, gl.FLOAT, false, 0, 0);
-
-gl.uniform1i(screenTextureUniformLocation, 0);
-
+gl.clearColor(0, 0, 0, 0);
 requestAnimationFrame(drawScene);
 
 function compileProgram(gl, vertGlsl, fragGlsl) {
@@ -209,7 +176,35 @@ function drawScene() {
     0, 0, 0, 1
   ];
 
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.viewport(0, 0, 32, 32);
+  gl.useProgram(program);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+  gl.vertexAttribPointer(positionAttribLocation, 2, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+  gl.vertexAttribPointer(colorAttribLocation, 3, gl.FLOAT, false, 0, 0);
+
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+  gl.useProgram(screenProgram);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, screenVertexBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, screenPositions, gl.STATIC_DRAW);
+  gl.vertexAttribPointer(screenPositionAttribLocation, 2, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, screenTexCoordBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, screenTexCoords, gl.STATIC_DRAW);
+  gl.vertexAttribPointer(screenTexCoordAttribLocation, 2, gl.FLOAT, false, 0, 0);
+
   gl.uniformMatrix4fv(screenRotationUniformLocation, false, [rotMat, fudgeMat].reduceRight(mat4Dot));
+  gl.uniform1i(screenTextureUniformLocation, 0);
 
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.drawArrays(gl.TRIANGLES, 0, 6);
