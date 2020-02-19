@@ -108,16 +108,19 @@ let screenTexCoords = Float32Array.of(
   1, 0
 );
 
-let screenProgram = compileProgram(gl, `
+let screenVertGlsl = `
 attribute vec2 a_position;
 attribute vec2 a_texcoord;
+uniform mat4 u_transform;
 varying vec2 v_texcoord;
 
 void main() {
-  gl_Position = vec4(a_position, 0.0, 1.0);
+  gl_Position = u_transform * vec4(a_position, 0.0, 1.0);
   v_texcoord = a_texcoord;
 }
-`, `
+`;
+
+let screenFragGlsl = `
 precision mediump float;
 varying vec2 v_texcoord;
 uniform sampler2D u_texture;
@@ -125,7 +128,9 @@ uniform sampler2D u_texture;
 void main() {
   gl_FragColor = texture2D(u_texture, v_texcoord);
 }
-`);
+`;
+
+let screenProgram = compileProgram(gl, screenVertGlsl, screenFragGlsl);
 
 gl.useProgram(screenProgram);
 
@@ -133,6 +138,7 @@ let screenVertexBuffer = gl.createBuffer();
 let screenTexCoordBuffer = gl.createBuffer();
 let screenPositionAttribLocation = gl.getAttribLocation(screenProgram, "a_position");
 let screenTexCoordAttribLocation = gl.getAttribLocation(screenProgram, "a_texcoord");
+let screenRotationUniformLocation = gl.getUniformLocation(screenProgram, "u_transform");
 let screenTextureUniformLocation = gl.getUniformLocation(screenProgram, "u_texture");
 
 gl.enableVertexAttribArray(screenPositionAttribLocation);
@@ -148,8 +154,7 @@ gl.vertexAttribPointer(screenTexCoordAttribLocation, 2, gl.FLOAT, false, 0, 0);
 
 gl.uniform1i(screenTextureUniformLocation, 0);
 
-gl.clear(gl.COLOR_BUFFER_BIT);
-gl.drawArrays(gl.TRIANGLES, 0, 6);
+requestAnimationFrame(drawScene);
 
 function compileProgram(gl, vertGlsl, fragGlsl) {
   let vertShader = compileShader(gl, gl.VERTEX_SHADER, vertGlsl);
@@ -181,4 +186,61 @@ function compileShader(gl, type, source) {
   }
 
   return shader;
+}
+
+let degA = 0;
+
+function drawScene() {
+  let a = degA++ * Math.PI / 180;
+  let s = Math.sin(a);
+  let c = Math.cos(a);
+
+  let rotMat = [
+    c, 0, s, 0,
+    0, 1, 0, 0,
+    -s, 0, c, 0,
+    0, 0, 0, 1
+  ];
+
+  let fudgeMat = [
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0.5,
+    0, 0, 0, 1
+  ];
+
+  gl.uniformMatrix4fv(screenRotationUniformLocation, false, [rotMat, fudgeMat].reduceRight(mat4Dot));
+
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+  requestAnimationFrame(drawScene);
+}
+
+function mat4Dot(m1, m2) {
+  return [
+    // First column
+    m1[0x0] * m2[0x0] + m1[0x4] * m2[0x1] + m1[0x8] * m2[0x2] + m1[0xC] * m2[0x3],
+    m1[0x1] * m2[0x0] + m1[0x5] * m2[0x1] + m1[0x9] * m2[0x2] + m1[0xD] * m2[0x3],
+    m1[0x2] * m2[0x0] + m1[0x6] * m2[0x1] + m1[0xA] * m2[0x2] + m1[0xE] * m2[0x3],
+    m1[0x3] * m2[0x0] + m1[0x7] * m2[0x1] + m1[0xB] * m2[0x2] + m1[0xF] * m2[0x3],
+
+    // Second column
+    m1[0x0] * m2[0x4] + m1[0x4] * m2[0x5] + m1[0x8] * m2[0x6] + m1[0xC] * m2[0x7],
+    m1[0x1] * m2[0x4] + m1[0x5] * m2[0x5] + m1[0x9] * m2[0x6] + m1[0xD] * m2[0x7],
+    m1[0x2] * m2[0x4] + m1[0x6] * m2[0x5] + m1[0xA] * m2[0x6] + m1[0xE] * m2[0x7],
+    m1[0x3] * m2[0x4] + m1[0x7] * m2[0x5] + m1[0xB] * m2[0x6] + m1[0xF] * m2[0x7],
+
+    // Third column
+    m1[0x0] * m2[0x8] + m1[0x4] * m2[0x9] + m1[0x8] * m2[0xA] + m1[0xC] * m2[0xB],
+    m1[0x1] * m2[0x8] + m1[0x5] * m2[0x9] + m1[0x9] * m2[0xA] + m1[0xD] * m2[0xB],
+    m1[0x2] * m2[0x8] + m1[0x6] * m2[0x9] + m1[0xA] * m2[0xA] + m1[0xE] * m2[0xB],
+    m1[0x3] * m2[0x8] + m1[0x7] * m2[0x9] + m1[0xB] * m2[0xA] + m1[0xF] * m2[0xB],
+
+    // Fourth column
+    m1[0x0] * m2[0xC] + m1[0x4] * m2[0xD] + m1[0x8] * m2[0xE] + m1[0xC] * m2[0xF],
+    m1[0x1] * m2[0xC] + m1[0x5] * m2[0xD] + m1[0x9] * m2[0xE] + m1[0xD] * m2[0xF],
+    m1[0x2] * m2[0xC] + m1[0x6] * m2[0xD] + m1[0xA] * m2[0xE] + m1[0xE] * m2[0xF],
+    m1[0x3] * m2[0xC] + m1[0x7] * m2[0xD] + m1[0xB] * m2[0xE] + m1[0xF] * m2[0xF]
+  ];
 }
