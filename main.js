@@ -82,8 +82,6 @@ let cubeTransformUniformLocation = gl.getUniformLocation(program, "u_transform")
 gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
 gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
 
-gl.enableVertexAttribArray(cubePositionAttribLocation);
-
 let screenPositions = Float32Array.of(
   -1, 1,
   -1, -1,
@@ -137,9 +135,6 @@ gl.bufferData(gl.ARRAY_BUFFER, screenPositions, gl.STATIC_DRAW);
 
 gl.bindBuffer(gl.ARRAY_BUFFER, screenTexCoordBuffer);
 gl.bufferData(gl.ARRAY_BUFFER, screenTexCoords, gl.STATIC_DRAW);
-
-gl.enableVertexAttribArray(screenPositionAttribLocation);
-gl.enableVertexAttribArray(screenTexCoordAttribLocation);
 
 requestAnimationFrame(drawScene);
 
@@ -214,6 +209,7 @@ function drawScene() {
   gl.useProgram(program);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  gl.enableVertexAttribArray(cubePositionAttribLocation);
   gl.vertexAttribPointer(cubePositionAttribLocation, 3, gl.FLOAT, false, 0, 0);
 
   gl.uniformMatrix4fv(cubeTransformUniformLocation, false, [cubeXZRotMat, cubeYZRotMat].reduceRight(mat4Dot));
@@ -228,9 +224,11 @@ function drawScene() {
   gl.useProgram(screenProgram);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, screenVertexBuffer);
+  gl.enableVertexAttribArray(screenPositionAttribLocation);
   gl.vertexAttribPointer(screenPositionAttribLocation, 2, gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, screenTexCoordBuffer);
+  gl.enableVertexAttribArray(screenTexCoordAttribLocation);
   gl.vertexAttribPointer(screenTexCoordAttribLocation, 2, gl.FLOAT, false, 0, 0);
 
   gl.uniformMatrix4fv(screenTransformUniformLocation, false, screenRotMat);
