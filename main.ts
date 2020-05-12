@@ -1,3 +1,6 @@
+// Original shader by lsdlive on Shadertoy
+// https://www.shadertoy.com/view/MdGczK
+
 let canvas = document.querySelector("canvas")!;
 let gl = canvas.getContext("webgl");
 
