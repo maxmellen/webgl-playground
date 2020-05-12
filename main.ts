@@ -30,99 +30,76 @@ uniform float u_time;
 #define iResolution u_resolution
 #define iTime u_time
 
-// variant of https://www.shadertoy.com/view/Mstczr
+// @lsdlive
 
-vec3 glow = vec3(0.);
-float glow_intensity = .01;
-vec3 glow_color = vec3(.5, .8, .5);
 
-float smin(float a, float b) {
-  float k = 3.;
-  float res = exp(-k*a) + exp(-k*b);
-  return -log(res) / k;
+float sc(vec3 p, float d){p=abs(p);p=max(p,p.yzx);return min(p.x,min(p.y,p.z))-d;}
+mat2 r2d(float a){float c=cos(a),s=sin(a);return mat2(c,s,-s,c);}
+float re(float p,float d){return mod(p-d*.5,d)-d*.5;}
+void amod(inout vec2 p, float m){float a=re(atan(p.x,p.y),m);p=vec2(cos(a),sin(a))*length(p);}
+void mo(inout vec2 p, vec2 d){p.x=abs(p.x)-d.x;p.y=abs(p.y)-d.y;if(p.y>p.x)p=p.yx;}
+
+
+float scc(vec3 p, float d){
+  float c1 = length(p.xy) - d;
+  float c2 = length(p.xz) - d;
+  float c3 = length(p.zy) - d;
+  return min(c1,min(c2,c3));
 }
 
-mat2 r2d(float a) {
-  float c = cos(a), s = sin(a);
-  return mat2(c, s, -s, c);
-}
+float g=0.;
+float de(vec3 p){
+  //p.y-=1.;
+  p.xy*=r2d(iTime*.3);
 
-vec2 amod(vec2 p, float m) {
-  float a = mod(atan(p.x, p.y) -m*.5, m) - m * .5;
-  return vec2(cos(a), sin(a)) * length(p);
-}
+  p.xy*=r2d(p.z*.3);
 
-float de(vec3 p) {
+  p.z=re(p.z,9.);
 
-  p.xy *= r2d(iTime*.1 + p.z);
-  p.xz *= r2d(3.14/2.);
+  amod(p.xy, 6.28/4.);
+  mo(p.xy, vec2(2., .3));
+  amod(p.xy, 6.28/8.3);
+  mo(p.zy, vec2(1., .3));
 
+  p.x=abs(p.x)-3.;
 
+  p.y=abs(p.y)-2.;
+  p.xy*=r2d(.5);
 
-  p.zy = amod(p.zy, .785);
+  float d = sc (p,.5);
 
-  p.y = abs(p.y) - .4;
-  p.z = abs(p.z) - .4;
-  if (p.z > p.y) p.yz = p.zy;
-
-
-  vec3 q = p;
-
-  p.xy *= r2d(-3.14 / 3.);
-  p.xz *= r2d(iTime);
-  p.x += cos(p.y*8.)*.2;
-  p.z += sin(p.y*4.)*.2;
-  float d = (length(p.xz) - .1);
-
-  p = q;
-  p.xy *= r2d(3.14 / 3.);
-  p.xz *= r2d(iTime);
-  p.x += cos(p.y*8.)*.2;
-  p.z += sin(p.y*4.)*.2;
-
-  d = smin(d, (length(p.xz) - .1));
-
-  p = q;
-  p.xz *= r2d(iTime);
-  p.x += cos(p.y*8.)*.2;
-  p.z += sin(p.y*4.)*.2;
-  
-  d = smin(d, (length(p.xz) - .1));
-  
-  p = q;
-  p.xy *= r2d(3.14 / 2.);
-  p.xz *= r2d(iTime);
-  p.x += cos(p.y*8.)*.2;
-  p.z += sin(p.y*4.)*.2;
-  
-  d = smin(d, (length(p.xz) - .1));
-  
-  // trick extracted from balkhan https://www.shadertoy.com/view/4t2yW1
-  glow += glow_color * .025 / (.01 + d*d);
+  p.xy*=r2d(iTime*.3);
+  d = min(d, -scc(p,1.));
+  g+=.01/(.01+d*d);
   return d;
 }
 
-void mainImage(out vec4 fragColor, in vec2 fragCoord)
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-  vec2 uv = ( fragCoord - .5*iResolution.xy ) / iResolution.y;
+  vec2 uv = fragCoord/iResolution.xy -.5;
+  uv.x*=iResolution.x/iResolution.y;
 
-  vec3 ro = vec3(0., 0, 6. + cos(iTime)), p;
-  vec3 rd = normalize(vec3(uv, -1));
-  p = ro;
+  vec3 ro=vec3(0,0,-3.+iTime);
+  vec3 rd=normalize(vec3(uv,1));
 
-  float t = 0.;
-  for (float i = 0.; i < 1.; i += .01) {
-    p = ro + rd * t;
-    float d = de(p);
-    if (d < .001 || t > 8.) break;
-    t += d * .2; // avoid clipping, enhance the glow
+  vec3 p;
+  float t=0.;
+  float ri;
+  for(float i=0.;i<1.;i+=.01){
+    ri=i;
+    p=ro+rd*t;
+    float d=de(p);
+    //if(d<.001)break;
+    d=max(abs(d), .005);
+    t+=d*.3;
   }
 
-  vec3 c = vec3(.9, .05 + cos(iTime)*.1, .2);
-  c.r *= p.y + p.z;
-  c += glow * glow_intensity;
-
-  fragColor = vec4(c, 1.);
+  vec3 bg= vec3(.2, .1, .2);
+  vec3 c=mix(vec3(.7, .1, .1), bg, uv.x*4.3+ri);
+  c.g+=sin(iTime);
+  c+=g*.02;
+  c=mix(c, bg,1.-exp(-.01*t*t));
+  fragColor = vec4(c,1.0);
 }
 
 void main() {
