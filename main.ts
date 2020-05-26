@@ -1,6 +1,5 @@
 // Original shader by balkhan on Shadertoy
-// https://www.shadertoy.com/view/MdVBWz
-
+// https://www.shadertoy.com/view/Xs3yRM
 let canvas = document.querySelector("canvas")!;
 let gl = canvas.getContext("webgl");
 
@@ -33,179 +32,99 @@ uniform float u_time;
 #define iResolution u_resolution
 #define iTime u_time
 
-/*
-* License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
-*/
+// variant of https://www.shadertoy.com/view/Mstczr
 
-float 	t;
+vec3 glow = vec3(0.);
+float glow_intensity = .01;
+vec3 glow_color = vec3(.5, .8, .5);
 
-#define I_MAX		100
-#define E			0.0001
-#define FAR			30.
-
-#define UNIFORM_ROTATION
-
-vec4	march(vec3 pos, vec3 dir);
-vec3	camera(vec2 uv);
-vec3	calcNormal(in vec3 pos, float e, vec3 dir);
-vec2	rot(vec2 p, vec2 ang);
-void	rotate(inout vec2 v, float angle);
-float	mylength(vec2 p);
-float	mylength(vec3 p);
-
-vec3	id;
-vec3	h;
-
-void mainImage(out vec4 c_out, in vec2 f)
-{
-  h *= 0.;
-  t = iTime;
-  vec3	col = vec3(0., 0., 0.);
-  vec2	R = iResolution.xy, uv  = (f-R*.5)/R.yy;
-  vec3	dir = camera(uv);
-  vec3	pos = vec3(-.0, .0, 2.-iTime);
-
-  vec4	inter = (march(pos, dir));
-
-  col = h*1.-.5;
-
-  c_out =  vec4(col, h.x);
+float smin(float a, float b) {
+  float k = 3.;
+  float res = exp(-k*a) + exp(-k*b);
+  return -log(res) / k;
 }
 
-float	scene(vec3 p)
-{
-  float	mind = 1e5;
-  p.z -= iTime*-1.725;
-
-  p.y += sin(iTime*-1.+p.z*.5)*.5;
-  p.x += cos(iTime*-1.+p.z*.5)*.5;
-  rotate(p.xy, p.z*.25 + 1.0*sin(p.z*.125 - iTime*0.5) + 0.*iTime);
-
-  float	tube = max(-(length(p.yx)-2.), (length(p.yx)-8.));
-  tube = max(tube, p.z-10.-0./length(p.yx*.06125) );
-  tube = max(tube, -p.z-10.-0./length(p.yx*.06125) );
-  vec3	pr = p;
-  pr.xy = (fract(p.xy*.5)-.5)*1.;
-  id = vec3(floor(p.xy*1.-.0), (floor(p.z*.5)-.0)*4.);
-
-  pr.xy = abs(pr.xy)-.2505;
-  #ifdef UNIFORM_ROTATION
-  rotate(pr.xy, iTime);
-  #else
-  rotate(pr.xy, clamp( + (mod(id.x*.5, 2.)-1. <= 0. ? 1. : -1.) + (mod(id.y*.5, 2.)-1. <= 0. ? 1. : -1.), -2., 2.) * iTime*.5 );
-  #endif
-  pr.z = (fract(pr.z*.5)-.5)*4.;
-  mind = mylength(vec2(mylength(pr.xyz)-.31, pr.z ))-.084;
-  return(mind);
+mat2 r2d(float a) {
+  float c = cos(a), s = sin(a);
+  return mat2(c, s, -s, c);
 }
 
+vec2 amod(vec2 p, float m) {
+  float a = mod(atan(p.x, p.y) -m*.5, m) - m * .5;
+  return vec2(cos(a), sin(a)) * length(p);
+}
 
-vec4	march(vec3 pos, vec3 dir)
+float de(vec3 p) {
+
+  p.xy *= r2d(iTime*.1 + p.z);
+  p.xz *= r2d(3.14/2.);
+
+
+
+  p.zy = amod(p.zy, .785);
+
+  p.y = abs(p.y) - .4;
+  p.z = abs(p.z) - .4;
+  if (p.z > p.y) p.yz = p.zy;
+
+
+  vec3 q = p;
+
+  p.xy *= r2d(-3.14 / 3.);
+  p.xz *= r2d(iTime);
+  p.x += cos(p.y*8.)*.2;
+  p.z += sin(p.y*4.)*.2;
+  float d = (length(p.xz) - .1);
+
+  p = q;
+  p.xy *= r2d(3.14 / 3.);
+  p.xz *= r2d(iTime);
+  p.x += cos(p.y*8.)*.2;
+  p.z += sin(p.y*4.)*.2;
+
+  d = smin(d, (length(p.xz) - .1));
+
+  p = q;
+  p.xz *= r2d(iTime);
+  p.x += cos(p.y*8.)*.2;
+  p.z += sin(p.y*4.)*.2;
+  
+  d = smin(d, (length(p.xz) - .1));
+  
+  p = q;
+  p.xy *= r2d(3.14 / 2.);
+  p.xz *= r2d(iTime);
+  p.x += cos(p.y*8.)*.2;
+  p.z += sin(p.y*4.)*.2;
+  
+  d = smin(d, (length(p.xz) - .1));
+  
+  // trick extracted from balkhan https://www.shadertoy.com/view/4t2yW1
+  glow += glow_color * .025 / (.01 + d*d);
+  return d;
+}
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
-  vec2	dist = vec2(0.0, 0.0);
-  vec3	p = vec3(0.0, 0.0, 0.0);
-  vec4	step = vec4(0.0, 0.0, 0.0, 0.0);
-  vec3	dirr;
+  vec2 uv = ( fragCoord - .5*iResolution.xy ) / iResolution.y;
 
-  for (int i = -1; i < I_MAX; ++i)
-  {
-    dirr = dir;
-    rotate(dirr.xy, .51025*dist.y+iTime*-.0 );
-    p = pos + dirr * dist.y;
-    dist.x = scene(p);
-    dist.y += dist.x*.5;
-    float	d = 5.;
-    h -= vec3(.3, .2, .3)*.1/ (d+.0);
-    h += (
-    .001/(dist.x*dist.x+0.01)
-    -
-    1./(dist.y*dist.y+40.)
-    )
-    *
-    vec3
-    (
-    1.+(sin(1.0*(id.y+id.x+id.z)+0.00) )
-    ,
-    1.+(sin(1.0*(id.x+id.y+id.z)+1.04) )
-    ,
-    1.+(sin(1.0*(id.z+id.x+id.z)+2.08) )
-    )*.5;
-    // log trick by aiekick
-    if (log(dist.y*dist.y/dist.x/1e5)>0. || dist.x < E || dist.y >= FAR)
-    {
-      if (dist.x < E || log(dist.y*dist.y/dist.x/1e5)>0.)
-      step.y = 1.;
-      break;
-    }
-    step.x++;
+  vec3 ro = vec3(0., 0, 6. + cos(iTime)), p;
+  vec3 rd = normalize(vec3(uv, -1));
+  p = ro;
+
+  float t = 0.;
+  for (float i = 0.; i < 1.; i += .01) {
+    p = ro + rd * t;
+    float d = de(p);
+    if (d < .001 || t > 8.) break;
+    t += d * .2; // avoid clipping, enhance the glow
   }
-  step.w = dist.y;
-  return (step);
-}
 
-// Utilities
+  vec3 c = vec3(.9, .05 + cos(iTime)*.1, .2);
+  c.r *= p.y + p.z;
+  c += glow * glow_intensity;
 
-float	mylength(vec3 p)
-{
-  float	ret = 1e5;
-
-  p = p*p;
-  p = p*p;
-  p = p*p;
-
-  ret = p.x + p.y + p.z;
-  ret = pow(ret, 1./8.);
-
-  return ret;
-}
-
-float	mylength(vec2 p)
-{
-  float	ret = 1e5;
-
-  p = p*p;
-  p = p*p;
-  p = p*p;
-
-  ret = p.x + p.y;
-  ret = pow(ret, 1./8.);
-
-  return ret;
-}
-
-void rotate(inout vec2 v, float angle)
-{
-  v = vec2(cos(angle)*v.x+sin(angle)*v.y,-sin(angle)*v.x+cos(angle)*v.y);
-}
-
-vec2	rot(vec2 p, vec2 ang)
-{
-  float	c = cos(ang.x);
-  float	s = sin(ang.y);
-  mat2	m = mat2(c, -s, s, c);
-
-  return (p * m);
-}
-
-
-vec3 calcNormal( in vec3 pos, float e, vec3 dir)
-{
-  vec3 eps = vec3(e,0.0,0.0);
-
-  return normalize(vec3(
-  march(pos+eps.xyy, dir).w - march(pos-eps.xyy, dir).w,
-  march(pos+eps.yxy, dir).w - march(pos-eps.yxy, dir).w,
-  march(pos+eps.yyx, dir).w - march(pos-eps.yyx, dir).w ));
-}
-
-vec3	camera(vec2 uv)
-{
-  float		fov = 1.;
-  vec3		forw  = vec3(0.0, 0.0, -1.0);
-  vec3    	right = vec3(1.0, 0.0, 0.0);
-  vec3    	up    = vec3(0.0, 1.0, 0.0);
-
-  return (normalize((uv.x) * right + (uv.y) * up + fov * forw));
+  fragColor = vec4(c, 1.);
 }
 
 void main() {
